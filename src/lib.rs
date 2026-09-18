@@ -7,7 +7,7 @@
 //! # Examples
 //!
 //! ```
-//! use kvrs::BPlusTree;
+//! use nucleus::BPlusTree;
 //!
 //! let mut tree = BPlusTree::new(4);
 //! tree.insert(1, "one".to_string()).unwrap();
