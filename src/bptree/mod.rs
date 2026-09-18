@@ -22,6 +22,7 @@ type Stack = Vec<PageId>;
 pub mod pager;
 
 use std::borrow::Borrow;
+use std::ops::{Bound, RangeBounds};
 
 use anyhow::{Result, bail};
 
@@ -49,6 +50,69 @@ pub struct BPlusTree<K: Ord + Clone, V> {
     root: Option<PageId>,
     max_keys: usize,
     pager: pager::PageManager<K, V>,
+}
+
+/// Ordered iterator over the entries of a [`BPlusTree`].
+///
+/// Walks the leaf `next` chain from left to right, so keys come out in
+/// sorted order. The iterator borrows the tree, and yielded references
+/// stay valid for that borrow. Construction is infallible: on corrupt
+/// structure the iterator simply ends early.
+///
+/// Created by [`BPlusTree::iter`] and [`BPlusTree::range`].
+///
+/// # Examples
+///
+/// ```rust
+/// use kvrs::BPlusTree;
+///
+/// let mut tree = BPlusTree::new(3);
+/// for k in [3, 1, 2] {
+///     tree.insert(k, k * 10).unwrap();
+/// }
+/// let all: Vec<_> = tree.iter().map(|(k, v)| (*k, *v)).collect();
+/// assert_eq!(all, vec![(1, 10), (2, 20), (3, 30)]);
+/// ```
+pub struct Iter<'a, K: Ord + Clone, V> {
+    tree: &'a BPlusTree<K, V>,
+    leaf: Option<PageId>,
+    pos: usize,
+    end: Bound<K>,
+}
+
+impl<'a, K: Ord + Clone, V> Iterator for Iter<'a, K, V> {
+    type Item = (&'a K, &'a V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // Copy the reference out so yielded items bind to the tree
+        // lifetime `'a` rather than the `&mut self` borrow.
+        let tree: &'a BPlusTree<K, V> = self.tree;
+        loop {
+            let id = self.leaf?;
+            let (keys, values, next) = match tree.pager.get(id)? {
+                Leaf { keys, values, next } => (keys, values, *next),
+                _ => return None,
+            };
+            if self.pos < keys.len() {
+                let key = &keys[self.pos];
+                let past_end = match &self.end {
+                    Bound::Unbounded => false,
+                    Bound::Included(e) => key > e,
+                    Bound::Excluded(e) => key >= e,
+                };
+                if past_end {
+                    self.leaf = None;
+                    return None;
+                }
+                let value = &values[self.pos];
+                self.pos += 1;
+                return Some((key, value));
+            }
+            // Leaf exhausted, follow the chain right.
+            self.leaf = next;
+            self.pos = 0;
+        }
+    }
 }
 
 impl<K: Ord + Clone, V> BPlusTree<K, V> {
@@ -196,6 +260,112 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
                 Err(_) => Ok(None),
             },
             _ => bail!("find_leaf returned a non-leaf node"),
+        }
+    }
+
+    /// Iterate over all entries in sorted key order.
+    ///
+    /// Starts at the leftmost leaf and follows the leaf `next` chain.
+    /// An empty tree yields nothing.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use kvrs::BPlusTree;
+    ///
+    /// let mut tree = BPlusTree::new(3);
+    /// for k in [3, 1, 2] {
+    ///     tree.insert(k, k).unwrap();
+    /// }
+    /// let keys: Vec<_> = tree.iter().map(|(k, _)| *k).collect();
+    /// assert_eq!(keys, vec![1, 2, 3]);
+    /// ```
+    pub fn iter(&self) -> Iter<'_, K, V> {
+        // Descend leftmost to the first leaf.
+        let mut leaf = self.root;
+        while let Some(id) = leaf {
+            match self.pager.get(id) {
+                Some(Leaf { .. }) => break,
+                Some(Internal { children, .. }) => leaf = children.first().copied(),
+                None => {
+                    leaf = None;
+                    break;
+                }
+            }
+        }
+        Iter {
+            tree: self,
+            leaf,
+            pos: 0,
+            end: Bound::Unbounded,
+        }
+    }
+
+    /// Iterate over entries in `bounds`, in sorted key order.
+    ///
+    /// Accepts the same syntax as `BTreeMap::range`: `2..5`, `2..=5`,
+    /// `2..`, `..5`, `..`. Seeks to the first key covered by the lower
+    /// bound, then walks the leaf chain until the upper bound is passed.
+    /// An empty tree, or a range matching nothing, yields nothing.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use kvrs::BPlusTree;
+    ///
+    /// let mut tree = BPlusTree::new(3);
+    /// for k in 1..=6 {
+    ///     tree.insert(k, k * 10).unwrap();
+    /// }
+    /// let got: Vec<_> = tree.range(2..=4).map(|(k, v)| (*k, *v)).collect();
+    /// assert_eq!(got, vec![(2, 20), (3, 30), (4, 40)]);
+    /// let all: Vec<_> = tree.range(..).map(|(k, _)| *k).collect();
+    /// assert_eq!(all, vec![1, 2, 3, 4, 5, 6]);
+    /// ```
+    pub fn range<R>(&self, bounds: R) -> Iter<'_, K, V>
+    where
+        R: RangeBounds<K>,
+    {
+        let end: Bound<K> = match bounds.end_bound() {
+            Bound::Included(k) => Bound::Included(k.clone()),
+            Bound::Excluded(k) => Bound::Excluded(k.clone()),
+            Bound::Unbounded => Bound::Unbounded,
+        };
+        let (leaf, pos) = match bounds.start_bound() {
+            Bound::Unbounded => {
+                // Same leftmost descent as `iter`.
+                let mut leaf = self.root;
+                while let Some(id) = leaf {
+                    match self.pager.get(id) {
+                        Some(Leaf { .. }) => break,
+                        Some(Internal { children, .. }) => leaf = children.first().copied(),
+                        None => {
+                            leaf = None;
+                            break;
+                        }
+                    }
+                }
+                (leaf, 0)
+            }
+            Bound::Included(k) | Bound::Excluded(k) => {
+                let inclusive = matches!(bounds.start_bound(), Bound::Included(_));
+                match self.find_leaf(k) {
+                    Ok(Some((id, _))) => match self.pager.get(id) {
+                        Some(Leaf { keys, .. }) => match keys.binary_search(k) {
+                            Ok(i) => (Some(id), if inclusive { i } else { i + 1 }),
+                            Err(i) => (Some(id), i),
+                        },
+                        _ => (None, 0),
+                    },
+                    _ => (None, 0),
+                }
+            }
+        };
+        Iter {
+            tree: self,
+            leaf,
+            pos,
+            end,
         }
     }
 
@@ -1331,6 +1501,52 @@ mod tests {
             }
         }
         assert!(t.root.is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn iter_yields_sorted_order_across_leaves() -> Result<()> {
+        let mut t = BPlusTree::new(3);
+        // Shuffled insert forces several splits and a multi leaf chain.
+        for k in [9, 1, 5, 3, 7, 11, 2, 8, 4, 6, 10, 0] {
+            t.insert(k, k * 10)?;
+        }
+        let got: Vec<_> = t.iter().map(|(k, v)| (*k, *v)).collect();
+        let want: Vec<_> = (0..12).map(|k| (k, k * 10)).collect();
+        assert_eq!(got, want);
+        Ok(())
+    }
+
+    #[test]
+    fn iter_empty_and_after_delete() -> Result<()> {
+        let mut t: BPlusTree<i32, i32> = BPlusTree::new(3);
+        assert_eq!(t.iter().count(), 0);
+        for k in 1..=8 {
+            t.insert(k, k)?;
+        }
+        // Merges stitch the `next` chain; iteration must skip freed pages.
+        for k in [2, 4, 6, 8] {
+            t.delete(k)?;
+        }
+        let keys: Vec<_> = t.iter().map(|(k, _)| *k).collect();
+        assert_eq!(keys, vec![1, 3, 5, 7]);
+        Ok(())
+    }
+
+    #[test]
+    fn range_bounds() -> Result<()> {
+        let mut t = BPlusTree::new(3);
+        for k in 1..=6 {
+            t.insert(k, k * 10)?;
+        }
+        let keys = |it: super::Iter<'_, i32, i32>| it.map(|(k, _)| *k).collect::<Vec<_>>();
+        assert_eq!(keys(t.range(2..=4)), vec![2, 3, 4]);
+        assert_eq!(keys(t.range(2..4)), vec![2, 3]);
+        assert_eq!(keys(t.range(4..)), vec![4, 5, 6]);
+        assert_eq!(keys(t.range(..3)), vec![1, 2]);
+        assert_eq!(keys(t.range(..)), vec![1, 2, 3, 4, 5, 6]);
+        assert!(keys(t.range(10..20)).is_empty());
+        assert!(keys(t.range(4..2)).is_empty());
         Ok(())
     }
 
