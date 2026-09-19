@@ -24,7 +24,7 @@ use std::ops::{Bound, RangeBounds};
 
 use anyhow::{Result, bail};
 
-use crate::bptree::BPlusTreeNode::{Internal, Leaf};
+use crate::btree::BPlusTreeNode::{Internal, Leaf};
 
 // One node in the tree. Nodes live in the pager and are addressed by
 // PageId, which plays the role of a disk page number.

@@ -16,7 +16,7 @@
 //! assert!(tree.get(&1).unwrap().is_none());
 //! ```
 
-pub mod bptree;
+pub mod btree;
 pub mod pager;
 
-pub use bptree::{BPlusTree, BPlusTreeNode, PageId};
+pub use btree::{BPlusTree, BPlusTreeNode, PageId};
