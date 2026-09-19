@@ -21,7 +21,7 @@ impl<K: Ord + Clone, V> PageManager<K, V> {
     /// # Examples
     ///
     /// ```
-    /// use nucleus::bptree::pager::PageManager;
+    /// use libnucleus::pager::PageManager;
     ///
     /// let store: PageManager<i32, i32> = PageManager::new();
     /// assert!(store.get(0).is_none());
@@ -40,8 +40,8 @@ impl<K: Ord + Clone, V> PageManager<K, V> {
     /// # Examples
     ///
     /// ```
-    /// use nucleus::bptree::pager::PageManager;
-    /// use nucleus::BPlusTreeNode;
+    /// use libnucleus::pager::PageManager;
+    /// use libnucleus::BPlusTreeNode;
     ///
     /// let mut store = PageManager::new();
     /// let id = store.new_page(BPlusTreeNode::Leaf {
@@ -64,8 +64,8 @@ impl<K: Ord + Clone, V> PageManager<K, V> {
     /// # Examples
     ///
     /// ```
-    /// use nucleus::bptree::pager::PageManager;
-    /// use nucleus::BPlusTreeNode;
+    /// use libnucleus::pager::PageManager;
+    /// use libnucleus::BPlusTreeNode;
     ///
     /// let mut store = PageManager::new();
     /// let id = store.new_page(BPlusTreeNode::Leaf {
@@ -84,8 +84,8 @@ impl<K: Ord + Clone, V> PageManager<K, V> {
     /// # Examples
     ///
     /// ```
-    /// use nucleus::bptree::pager::PageManager;
-    /// use nucleus::BPlusTreeNode;
+    /// use libnucleus::pager::PageManager;
+    /// use libnucleus::BPlusTreeNode;
     ///
     /// let mut store = PageManager::new();
     /// let id = store.new_page(BPlusTreeNode::Leaf {
@@ -107,8 +107,8 @@ impl<K: Ord + Clone, V> PageManager<K, V> {
     /// # Examples
     ///
     /// ```
-    /// use nucleus::bptree::pager::PageManager;
-    /// use nucleus::BPlusTreeNode;
+    /// use libnucleus::pager::PageManager;
+    /// use libnucleus::BPlusTreeNode;
     ///
     /// let mut store = PageManager::new();
     /// let id = store.new_page(BPlusTreeNode::Leaf {

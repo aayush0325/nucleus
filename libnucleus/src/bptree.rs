@@ -19,8 +19,6 @@
 
 pub type PageId = u64;
 type Stack = Vec<PageId>;
-pub mod pager;
-
 use std::borrow::Borrow;
 use std::ops::{Bound, RangeBounds};
 
@@ -49,7 +47,7 @@ pub enum BPlusTreeNode<K, V> {
 pub struct BPlusTree<K: Ord + Clone, V> {
     root: Option<PageId>,
     max_keys: usize,
-    pager: pager::PageManager<K, V>,
+    pager: crate::pager::PageManager<K, V>,
 }
 
 /// Ordered iterator over the entries of a [`BPlusTree`].
@@ -64,7 +62,7 @@ pub struct BPlusTree<K: Ord + Clone, V> {
 /// # Examples
 ///
 /// ```rust
-/// use nucleus::BPlusTree;
+/// use libnucleus::BPlusTree;
 ///
 /// let mut tree = BPlusTree::new(3);
 /// for k in [3, 1, 2] {
@@ -126,7 +124,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// # Examples
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let tree: BPlusTree<i32, String> = BPlusTree::new(4);
     /// assert!(tree.is_empty());
@@ -136,7 +134,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
         Self {
             root: None,
             max_keys,
-            pager: pager::PageManager::new(),
+            pager: crate::pager::PageManager::new(),
         }
     }
 
@@ -145,7 +143,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// # Examples
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree: BPlusTree<i32, i32> = BPlusTree::new(3);
     /// assert!(tree.is_empty());
@@ -165,7 +163,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// # Examples
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let tree: BPlusTree<i32, i32> = BPlusTree::new(4);
     /// assert_eq!(tree.min_keys(), 2);
@@ -191,7 +189,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// Descending to the right leaf is what makes point lookups work:
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree: BPlusTree<i32, i32> = BPlusTree::new(4);
     /// tree.insert(1, 10).unwrap();
@@ -239,7 +237,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// # Examples
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree: BPlusTree<i32, i32> = BPlusTree::new(4);
     /// tree.insert(7, 70).unwrap();
@@ -271,7 +269,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// # Examples
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree = BPlusTree::new(3);
     /// for k in [3, 1, 2] {
@@ -311,7 +309,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// # Examples
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree = BPlusTree::new(3);
     /// for k in 1..=6 {
@@ -381,7 +379,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// # Examples
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree: BPlusTree<i32, i32> = BPlusTree::new(3);
     /// tree.insert(1, 10).unwrap();
@@ -441,7 +439,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// `[2, 3]` with separator `2` inserted into the parent:
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree: BPlusTree<i32, i32> = BPlusTree::new(2);
     /// for k in 1..=3 {
@@ -492,7 +490,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// when the split leaf was the root:
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree: BPlusTree<i32, i32> = BPlusTree::new(2);
     /// for k in 1..=5 {
@@ -551,7 +549,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// on the left page and `[3]` on the new right page:
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree: BPlusTree<i32, i32> = BPlusTree::new(2);
     /// for k in 1..=8 {
@@ -597,7 +595,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// # Examples
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree: BPlusTree<i32, i32> = BPlusTree::new(3);
     /// tree.insert(1, 10).unwrap();
@@ -687,7 +685,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// Splitting first exercises the lookup, which every delete relies on:
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree: BPlusTree<i32, i32> = BPlusTree::new(3);
     /// for k in 1..=4 {
@@ -726,7 +724,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// into `[1, 4]` and the parent loses one separator:
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree: BPlusTree<i32, i32> = BPlusTree::new(3);
     /// for k in 1..=12 {
@@ -886,7 +884,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// tree or continues the fix one level higher:
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree: BPlusTree<i32, i32> = BPlusTree::new(3);
     /// for k in 1..=8 {
@@ -930,7 +928,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// `[1, 2]`, page is `[3, 4]`, and the separator is `3`:
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree: BPlusTree<i32, i32> = BPlusTree::new(3);
     /// for k in 1..=6 {
@@ -986,7 +984,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// `[1, 2]`, right is `[3, 4]`, and the separator is `3`:
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree: BPlusTree<i32, i32> = BPlusTree::new(3);
     /// for k in 1..=6 {
@@ -1047,7 +1045,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// `[1, 2]`, the parent separator is gone, and the page is freed:
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree: BPlusTree<i32, i32> = BPlusTree::new(3);
     /// for k in 1..=4 {
@@ -1112,7 +1110,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// `[1, 2]`, the parent separator is gone, and the right page is freed:
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree: BPlusTree<i32, i32> = BPlusTree::new(3);
     /// for k in 1..=4 {
@@ -1177,7 +1175,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// sibling last child prepended:
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree: BPlusTree<i32, i32> = BPlusTree::new(3);
     /// for k in 1..=12 {
@@ -1239,7 +1237,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// first child appended to the page:
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree: BPlusTree<i32, i32> = BPlusTree::new(3);
     /// for k in 1..=12 {
@@ -1300,7 +1298,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// `5` removed:
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree: BPlusTree<i32, i32> = BPlusTree::new(3);
     /// for k in 1..=12 {
@@ -1363,7 +1361,7 @@ impl<K: Ord + Clone, V> BPlusTree<K, V> {
     /// `5` removed:
     ///
     /// ```rust
-    /// use nucleus::BPlusTree;
+    /// use libnucleus::BPlusTree;
     ///
     /// let mut tree: BPlusTree<i32, i32> = BPlusTree::new(3);
     /// for k in 1..=12 {

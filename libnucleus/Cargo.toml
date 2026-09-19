@@ -1,0 +1,9 @@
+[package]
+name = "libnucleus"
+version = "0.1.0"
+edition = "2024"
+description = "A tiny SQLite-compatible storage engine with an in-memory B+ tree."
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+anyhow = "1.0.104"

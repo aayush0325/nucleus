@@ -1,4 +1,4 @@
-use nucleus::BPlusTree;
+use libnucleus::BPlusTree;
 
 fn main() -> anyhow::Result<()> {
     let mut tree = BPlusTree::new(4);

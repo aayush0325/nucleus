@@ -1,0 +1,10 @@
+[package]
+name = "nucleusdb"
+version = "0.1.0"
+edition = "2024"
+description = "A SQLite-compatible CLI built on libnucleus."
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0.104"
+libnucleus = { path = "../libnucleus" }

@@ -1,13 +1,12 @@
-//! A tiny in-memory B+ tree.
+//! A tiny SQLite-compatible storage engine.
 //!
-//! All values live in leaf nodes, which are linked for ordered scans.
-//! Internal nodes hold separator keys plus child pointers. Nodes split on
-//! overflow and borrow-or-merge with siblings on underflow.
+//! libnucleus provides an in-memory B+ tree implementation that is
+//! designed to be compatible with SQLite's semantics.
 //!
 //! # Examples
 //!
 //! ```
-//! use nucleus::BPlusTree;
+//! use libnucleus::BPlusTree;
 //!
 //! let mut tree = BPlusTree::new(4);
 //! tree.insert(1, "one".to_string()).unwrap();
@@ -18,5 +17,6 @@
 //! ```
 
 pub mod bptree;
+pub mod pager;
 
 pub use bptree::{BPlusTree, BPlusTreeNode, PageId};
